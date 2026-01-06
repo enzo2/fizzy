@@ -1,0 +1,35 @@
+services:
+  web:
+    image: ghcr.io/enzo2/fizzy:main   # once ARM64 support, can switch to the original basecame repo image; see: https://github.com/dakotahp/fizzy/pull/1
+    restart: always
+    expose:
+      - "80/tcp"
+    networks:
+      - reverse-proxy-public
+      - default
+    volumes:
+      - fizzy-data:/rails/storage
+    environment:
+      SECRET_KEY_BASE: ${SECRET_KEY_BASE}
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY}
+      MAILER_FROM_ADDRESS: ${MAILER_FROM_ADDRESS}
+      SOLID_QUEUE_IN_PUMA: true
+      SMTP_ADDRESS: ${SMTP_ADDRESS}
+      SMTP_USERNAME: ${SMTP_USERNAME}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
+      BASE_URL: ${BASE_URL}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=reverse-proxy-public"   #traefik should connect using the common network
+      - "traefik.http.routers.fizzy.rule=Host(`${FIZZY_HOST}`)"
+      - "traefik.http.routers.fizzy.entrypoints=websecure" #defined in traefik.yml, this means traffic to 443 should be routed
+      - "traefik.http.routers.fizzy.tls=true"
+volumes:
+  fizzy-data:
+    
+networks:
+  reverse-proxy-public:  #traefik network for reverse proxying between containers - publically exposed services
+    external: true  #network is created outside of this stack
+    name: "reverse-proxy-public"
+  default:  #this stack's private network
